@@ -14,29 +14,32 @@ with st.sidebar:
                            height=300)
 
 if api_key:
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash-latest')
+    try:
+        genai.configure(api_key=api_key)
+        # We use the specific naming convention that Google AI Studio prefers
+        model = genai.GenerativeModel(model_name='gemini-1.5-flash')
 
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
 
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
 
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+        if prompt := st.chat_input("Ask the agent about the context..."):
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
 
-    if prompt := st.chat_input("Ask the agent about the context..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
-        # Grounding the AI with the context provided
-        full_query = f"Context: {context}\n\nQuestion: {prompt}\n\nAnswer using only the context provided."
-        
-        with st.chat_message("assistant"):
-            response = model.generate_content(full_query)
-            st.markdown(response.text)
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
+            # The RAG Prompt
+            full_query = f"CONTEXT:\n{context}\n\nUSER QUESTION:\n{prompt}\n\nINSTRUCTION: Answer using only the context above."
+            
+            with st.chat_message("assistant"):
+                response = model.generate_content(full_query)
+                st.markdown(response.text)
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
+    except Exception as e:
+        st.error(f"Agent Error: {e}")
 else:
-    st.info("Please enter your Gemini API Key in the sidebar to begin.")
-  
+    st.info("Step 1: Paste your API Key in the sidebar. Step 2: Add context. Step 3: Ask a question!")
+    
