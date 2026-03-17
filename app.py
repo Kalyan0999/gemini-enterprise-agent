@@ -7,16 +7,21 @@ st.title("📂 Enterprise Knowledge Agent")
 with st.sidebar:
     api_key = st.text_input("Enter Gemini API Key:", type="password")
     st.markdown("---")
-    context = st.text_area("Enterprise Knowledge Base:", 
-                           placeholder="Paste company policies or data here...",
-                           height=300)
+    context = st.text_area("Enterprise Knowledge Base:", height=300)
 
 if api_key:
     try:
         genai.configure(api_key=api_key)
         
-        # This is the most stable way to call the model currently
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # FIX: Instead of hardcoding a name that might be 'Not Found', 
+        # we find the first available model on your account that supports chat.
+        if "model_name" not in st.session_state:
+            available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            # Prioritize Gemini 2.0 or 1.5 if available
+            st.session_state.model_name = next((m for m in available_models if "flash" in m), available_models[0])
+        
+        model = genai.GenerativeModel(st.session_state.model_name)
+        st.caption(f"Connected to: {st.session_state.model_name}")
 
         if "messages" not in st.session_state:
             st.session_state.messages = []
@@ -30,8 +35,7 @@ if api_key:
             with st.chat_message("user"):
                 st.markdown(prompt)
 
-            # Providing the context directly in the prompt
-            full_prompt = f"Context: {context}\n\nQuestion: {prompt}"
+            full_prompt = f"Using ONLY this context: {context}\n\nQuestion: {prompt}"
             
             with st.chat_message("assistant"):
                 response = model.generate_content(full_prompt)
@@ -39,7 +43,8 @@ if api_key:
                 st.session_state.messages.append({"role": "assistant", "content": response.text})
                 
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"Agent Error: {e}")
+        st.button("Clear Cache & Retry", on_click=lambda: st.session_state.clear())
 else:
-    st.info("Please enter your Gemini API Key in the sidebar.")
+    st.info("Paste your API Key in the sidebar to start.")
     
