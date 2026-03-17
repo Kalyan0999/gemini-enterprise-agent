@@ -17,9 +17,8 @@ if api_key:
     try:
         genai.configure(api_key=api_key)
         # We use the specific naming convention that Google AI Studio prefers
-        model = genai.GenerativeModel('gemini-pro')
+        model = genai.GenerativeModel('models/gemini-1.5-flash')
         
-
         if "messages" not in st.session_state:
             st.session_state.messages = []
 
